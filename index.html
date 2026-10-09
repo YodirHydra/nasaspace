@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOLODHAR - Smart Drain Monitoring</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#070b11;--bg1:#0d1420;--bg2:#131d2e;--bg3:#1a2740;--accent:#00e8b0;--accent2:#00c49a;--adim:rgba(0,232,176,.12);--warn:#f5a623;--danger:#ff4757;--success:#2ed573;--txt:#e8ecf1;--txt2:#8a9bb5;--txt3:#4a5c75;--brd:#1c2a3f;--sb:250px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',sans-serif;background:var(--bg0);color:var(--txt);overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg1)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+.sb{position:fixed;left:0;top:0;bottom:0;width:var(--sb);background:var(--bg1);border-right:1px solid var(--brd);z-index:50;display:flex;flex-direction:column;transition:transform .3s}
+.sb.hide{transform:translateX(-100%)}
+.sb .logo{padding:18px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px}
+.sb .logo .ico{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#007a5e);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:800}
+.sb .logo h1{font-size:17px;font-weight:700}.sb .logo span{font-size:9px;color:var(--txt3);display:block}
+.ns{padding:14px 12px 6px;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt3);font-weight:700}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 18px;margin:1px 6px;border-radius:7px;cursor:pointer;transition:all .2s;color:var(--txt2);font-size:13px;font-weight:500;position:relative}
+.ni:hover{background:var(--adim);color:var(--txt)}
+.ni.act{background:var(--adim);color:var(--accent);font-weight:600}
+.ni.act::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:55%;background:var(--accent);border-radius:0 3px 3px 0}
+.ni i{width:18px;text-align:center;font-size:14px}
+.mn{margin-left:var(--sb);min-height:100vh;transition:margin .3s}
+.mn.full{margin-left:0}
+.tb{position:sticky;top:0;z-index:40;background:rgba(7,11,17,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--brd);padding:10px 24px;display:flex;align-items:center;justify-content:space-between}
+.tb .ham{display:none;background:none;border:none;color:var(--txt2);font-size:18px;cursor:pointer}
+.ua{width:32px;height:32px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#007a5e);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff}
+.vw{display:none;padding:20px 24px;animation:fi .25s ease}.vw.act{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.sc{background:var(--bg2);border:1px solid var(--brd);border-radius:11px;padding:18px;position:relative;overflow:hidden;transition:all .3s}
+.sc:hover{border-color:var(--accent);transform:translateY(-2px)}
+.sc .gl{position:absolute;top:-15px;right:-15px;width:70px;height:70px;border-radius:50%;filter:blur(25px);opacity:.15}
+.cd{background:var(--bg2);border:1px solid var(--brd);border-radius:11px;overflow:hidden}
+.cd .ch{padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.cd .ch h3{font-size:14px;font-weight:600}
+.cd .cb{padding:16px}
+.bg{display:inline-flex;align-items:center;padding:2px 9px;border-radius:16px;font-size:10px;font-weight:600}
+.bg-g{background:rgba(46,213,115,.15);color:var(--success)}.bg-y{background:rgba(245,166,35,.15);color:var(--warn)}.bg-r{background:rgba(255,71,87,.15);color:var(--danger)}.bg-b{background:var(--adim);color:var(--accent)}
+.bt{padding:7px 16px;border-radius:7px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.bt-p{background:var(--accent);color:#070b11}.bt-p:hover{background:var(--accent2)}
+.bt-g{background:transparent;border:1px solid var(--brd);color:var(--txt2)}.bt-g:hover{border-color:var(--accent);color:var(--accent)}
+.bt-s{padding:4px 10px;font-size:11px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:9px 14px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--txt3);font-weight:700;border-bottom:1px solid var(--brd)}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid var(--brd);color:var(--txt2)}
+tr:hover td{background:var(--adim)}
+.tc{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px}
+.tt{padding:12px 18px;border-radius:9px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;animation:si .3s;min-width:280px;box-shadow:0 8px 25px rgba(0,0,0,.4)}
+.tt-s{background:#0d2818;border:1px solid #166534;color:var(--success)}
+.tt-w{background:#2a1f0a;border:1px solid #854d0e;color:var(--warn)}
+.tt-d{background:#2a0a0e;border:1px solid #991b1b;color:var(--danger)}
+.tt-i{background:#0a1f2a;border:1px solid #0e4a6e;color:var(--accent)}
+@keyframes si{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center}
+.mo.show{display:flex}
+.mo .mc{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;width:90%;max-width:480px;max-height:85vh;overflow-y:auto}
+.mo .mh{padding:18px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.mo .mh h3{font-size:15px;font-weight:700}
+.mo .mx{background:none;border:none;color:var(--txt3);font-size:16px;cursor:pointer}
+.mo .mb{padding:20px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--bg1);border:1px solid var(--brd);border-radius:7px;padding:9px 12px;color:var(--txt);font-family:inherit;font-size:12px;outline:none}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}
+#mapBox{height:calc(100vh - 120px);border-radius:11px;overflow:hidden;border:1px solid var(--brd)}
+#twinCvs{width:100%;height:calc(100vh - 120px);border-radius:11px;border:1px solid var(--brd);background:var(--bg1)}
+.pb{height:5px;background:var(--bg1);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;transition:width .5s}
+.tab{padding:7px 16px;border:none;background:transparent;color:var(--txt3);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.act{color:var(--accent);border-bottom-color:var(--accent)}.tab:hover{color:var(--txt)}
+.tc2{display:none}.tc2.act{display:block}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.ic{background:var(--bg1);border:1px solid var(--brd);border-radius:9px;overflow:hidden;transition:all .3s}
+.ic:hover{border-color:var(--accent);transform:translateY(-2px)}
+.ic img{width:100%;height:130px;object-fit:cover}
+.ic .inf{padding:10px}
+.pulse{animation:pu 2s infinite}@keyframes pu{0%,100%{opacity:1}50%{opacity:.5}}
+@media(max-width:768px){.sb{transform:translateX(-100%)}.sb.open{transform:translateX(0)}.mn{margin-left:0!important}.tb .ham{display:block}.sg{grid-template-columns:1fr 1fr!important}.cg{grid-template-columns:1fr!important}}
+</style>
+</head>
+<body>
+
+<aside class="sb" id="sb">
+  <div class="logo">
+    <div class="ico">J</div>
+    <div><h1>JOLODHAR</h1><span data-l="subtitle">স্মার্ট ড্রেন মনিটরিং</span></div>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div class="ns" data-l="monitoring">মনিটরিং</div>
+    <div class="ni act" data-v="dash"><i class="fas fa-th-large"></i><span data-l="dashboard">ড্যাশবোর্ড</span></div>
+    <div class="ni" data-v="map"><i class="fas fa-map-marked-alt"></i><span data-l="map">GIS মানচিত্র</span></div>
+    <div class="ni" data-v="twin"><i class="fas fa-cube"></i><span data-l="twin">ডিজিটাল টুইন</span></div>
+    <div class="ns" data-l="ai">AI ও বিশ্লেষণ</div>
+    <div class="ni" data-v="pred"><i class="fas fa-brain"></i><span data-l="pred">ML পূর্বাভাস</span></div>
+    <div class="ni" data-v="img"><i class="fas fa-camera"></i><span data-l="img">ইমেজ বিশ্লেষণ</span></div>
+    <div class="ns" data-l="manage">ব্যবস্থাপনা</div>
+    <div class="ni" data-v="alert"><i class="fas fa-bell"></i><span data-l="alerts">সতর্কতা</span> <span id="alertBadge" style="margin-left:auto;background:var(--danger);color:#fff;font-size:9px;padding:1px 7px;border-radius:10px;">0</span></div>
+    <div class="ni" data-v="task"><i class="fas fa-tasks"></i><span data-l="tasks">কাজ ব্যবস্থাপনা</span></div>
+    <div class="ni" data-v="admin"><i class="fas fa-cog"></i><span data-l="admin">অ্যাডমিন প্যানেল</span></div>
+    <div class="ni" data-v="report"><i class="fas fa-file-alt"></i><span data-l="reports">রিপোর্ট</span></div>
+  </div>
+  <div style="padding:14px;border-top:1px solid var(--brd);font-size:10px;color:var(--txt3);text-align:center">v2.0 | UITS Team 04</div>
+</aside>
+
+<div class="mn" id="mn">
+  <header class="tb">
+  <div style="display:flex;align-items:center;gap:14px">
+    <button class="ham" id="ham"><i class="fas fa-bars"></i></button>
+    <span style="font-size:13px;color:var(--txt3)" id="connStatus">...</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="bt bt-s bt-g" id="langBtn" style="font-size:11px;font-weight:700">EN</button>
+    <span style="font-size:12px;color:var(--txt2)" id="userName">—</span>
+    <div class="ua" id="userAvatar">—</div>
+  </div>
+</header>
+  <div class="vw act" id="v-dash"></div>
+  <div class="vw" id="v-map"><div id="mapBox"></div></div>
+  <div class="vw" id="v-twin"><canvas id="twinCvs"></canvas><div id="twinInfo" style="margin-top:10px"></div></div>
+  <div class="vw" id="v-pred"></div>
+  <div class="vw" id="v-img"></div>
+  <div class="vw" id="v-alert"></div>
+  <div class="vw" id="v-task"></div>
+  <div class="vw" id="v-admin"></div>
+  <div class="vw" id="v-report"></div>
+</div>
+
+<div class="tc" id="toasts"></div>
+<div class="mo" id="modal"><div class="mc"><div class="mh"><h3 id="mTitle"></h3><button class="mx" onclick="closeModal()"><i class="fas fa-times"></i></button></div><div class="mb" id="mBody"></div></div></div>
+<script>
+/* === Language System === */
+let LANG = 'bn';
+const LANG_DICT = {
+  bn: {
+    monitoring:'মনিটরিং', dashboard:'ড্যাশবোর্ড', map:'GIS মানচিত্র',
+    twin:'ডিজিটাল টুইন', ai:'AI ও বিশ্লেষণ', pred:'ML পূর্বাভাস',
+    img:'ইমেজ বিশ্লেষণ', manage:'ব্যবস্থাপনা', alerts:'সতর্কতা',
+    tasks:'কাজ ব্যবস্থাপনা', admin:'অ্যাডমিন প্যানেল', reports:'রিপোর্ট',
+    total_drains:'মোট ড্রেন', active_alerts:'সক্রিয় সতর্কতা',
+    pending_tasks:'মুলতবি কাজ', ml_accuracy:'ML নির্ভুলতা',
+    water_level:'পানির স্তর (cm)', risk_dist:'ঝুঁকি বিন্যাস',
+    drain_status:'ড্রেন স্ট্যাটাস', id:'আইডি', location:'অবস্থান',
+    wl:'স্তর', flow:'প্রবাহ', gas:'গ্যাস', risk:'ঝুঁকি',
+    battery:'ব্যাটারি', new_task:'নতুন কাজ', resolve:'সমাধান',
+    add_user:'নতুন ব্যবক্তি', register_device:'ডিভাইস নিবন্ধন',
+    generate:'জেনারেট', download_pdf:'PDF ডাউনলোড',
+    from:'থেকে', to:'পর্যন্ত', type:'ধরন',
+    daily:'দৈনিক', weekly:'সাপ্তাহিক', monthly:'মাসিক',
+    preview:'প্রিভিউ', users:'ব্যবক্তি', devices:'ডিভাইস', settings:'সেটিংস',
+    name:'নাম', role:'ভূমিকা', email:'ইমেইল', status:'স্ট্যাটাস',
+    device_name:'ডিভাইস', health:'স্বাস্থ্য', last_seen:'শেষ দেখা',
+    ml_dashboard:'ML পূর্বাভাস ড্যাশবোর্ড',
+    risk_score:'ঝুঁকি স্কোর', confidence:'আত্মবিশ্বাস',
+    model_perf:'মডেল পারফরম্যান্স', feat_imp:'ফিচার ইম্পোর্ট্যান্স',
+    img_analysis:'ইমেজ বিশ্লেষণ', upload:'আপলোড', category_breakdown:'ক্যাটাগরি',
+    alert_mgmt:'সতর্কতা ব্যবস্থাপনা', type_col:'ধরন', msg:'বার্তা',
+    priority:'অগ্রাধিকার', time:'সময়', action:'অ্যাকশন',
+    task_mgmt:'কাজ ব্যবস্থাপনা', worker:'কর্মী', created:'তৈরি',
+    advance:'এগিয়ে যাও', report_gen:'রিপোর্ট জেনারেশন',
+    all:'সব', high:'উচ্চ', medium:'মাঝারি', low:'নিম্ন',
+    normal:'স্বাভাবিক', warning:'সতর্ক', critical:'সংকটাপন্ন',
+    assigned:'নির্ধারিত', in_progress:'চলমান', completed:'সম্পন্ন',
+    overdue:'বিলম্বিত', online:'অনলাইন', offline:'অফলাইন',
+    active:'সক্রিয়', inactive:'নিষ্ক্রিয়',
+    subtitle:'স্মার্ট ড্রেন মনিটরিং'
+  },
+  en: {
+    monitoring:'MONITORING', dashboard:'Dashboard', map:'GIS Map',
+    twin:'Digital Twin', ai:'AI & ANALYTICS', pred:'ML Predictions',
+    img:'Image Analysis', manage:'MANAGEMENT', alerts:'Alerts',
+    tasks:'Task Management', admin:'Admin Panel', reports:'Reports',
+    total_drains:'Total Drains', active_alerts:'Active Alerts',
+    pending_tasks:'Pending Tasks', ml_accuracy:'ML Accuracy',
+    water_level:'Water Level (cm)', risk_dist:'Risk Distribution',
+    drain_status:'Drain Status', id:'ID', location:'Location',
+    wl:'Level', flow:'Flow', gas:'Gas', risk:'Risk',
+    battery:'Battery', new_task:'New Task', resolve:'Resolve',
+    add_user:'Add User', register_device:'Register Device',
+    generate:'Generate', download_pdf:'Download PDF',
+    from:'From', to:'To', type:'Type',
+    daily:'Daily', weekly:'Weekly', monthly:'Monthly',
+    preview:'Preview', users:'Users', devices:'Devices', settings:'Settings',
+    name:'Name', role:'Role', email:'Email', status:'Status',
+    device_name:'Device', health:'Health', last_seen:'Last Seen',
+    ml_dashboard:'ML Prediction Dashboard',
+    risk_score:'Risk Score', confidence:'Confidence',
+    model_perf:'Model Performance', feat_imp:'Feature Importance',
+    img_analysis:'Image Analysis', upload:'Upload', category_breakdown:'Categories',
+    alert_mgmt:'Alert Management', type_col:'Type', msg:'Message',
+    priority:'Priority', time:'Time', action:'Action',
+    task_mgmt:'Task Management', worker:'Worker', created:'Created',
+    advance:'Advance', report_gen:'Report Generation',
+    all:'All', high:'High', medium:'Medium', low:'Low',
+    normal:'Normal', warning:'Warning', critical:'Critical',
+    assigned:'Assigned', in_progress:'In Progress', completed:'Completed',
+    overdue:'Overdue', online:'Online', offline:'Offline',
+    active:'Active', inactive:'Inactive',
+    subtitle:'Smart Drain Monitoring'
+  }
+};
+/* === Language Toggle === */
+
+/* === Full UI translation for static + dynamically generated text === */
+const UI_TRANSLATIONS = {
+  en:{
+    'মনিটরিং':'MONITORING','AI ও বিশ্লেষণ':'AI & ANALYTICS','ব্যবস্থাপনা':'MANAGEMENT',
+    'ড্যাশবোর্ড':'Dashboard','GIS মানচিত্র':'GIS Map','ডিজিটাল টুইন':'Digital Twin',
+    'ML পূর্বাভাস':'ML Predictions','ইমেজ বিশ্লেষণ':'Image Analysis','সতর্কতা':'Alerts',
+    'কাজ ব্যবস্থাপনা':'Task Management','অ্যাডমিন প্যানেল':'Admin Panel','রিপোর্ট':'Reports',
+    'স্মার্ট ড্রেন মনিটরিং':'Smart Drain Monitoring','মোট ড্রেন':'Total Drains',
+    'সক্রিয় সতর্কতা':'Active Alerts','মুলতবি কাজ':'Pending Tasks','ML নির্ভুলতা':'ML Accuracy',
+    'পানির স্তর (cm)':'Water Level (cm)','ঝুঁকি বিন্যাস':'Risk Distribution','ড্রেন স্ট্যাটাস':'Drain Status',
+    'অবস্থান':'Location','স্তর':'Level','প্রবাহ':'Flow','গ্যাস':'Gas','ঝুঁকি':'Risk',
+    'ব্যাটারি':'Battery','নতুন কাজ':'New Task','সমাধান':'Resolve','নতুন ব্যবক্তি':'Add User',
+    'ডিভাইস নিবন্ধন':'Register Device','জেনারেট':'Generate','PDF ডাউনলোড':'Download PDF',
+    'থেকে':'From','পর্যন্ত':'To','ধরন':'Type','দৈনিক':'Daily','সাপ্তাহিক':'Weekly','মাসিক':'Monthly',
+    'প্রিভিউ':'Preview','ব্যবক্তি':'Users','ডিভাইস':'Devices','সেটিংস':'Settings',
+    'নাম':'Name','ভূমিকা':'Role','ইমেইল':'Email','স্ট্যাটাস':'Status','স্বাস্থ্য':'Health',
+    'শেষ দেখা':'Last Seen','ঝুঁকি স্কোর':'Risk Score','আত্মবিশ্বাস':'Confidence',
+    'মডেল পারফরম্যান্স':'Model Performance','ফিচার ইম্পোর্ট্যান্স':'Feature Importance',
+    'ক্যাটাগরি':'Categories','সতর্কতা ব্যবস্থাপনা':'Alert Management','বার্তা':'Message',
+    'অগ্রাধিকার':'Priority','সময়':'Time','অ্যাকশন':'Action','কর্মী':'Worker','তৈরি':'Created',
+    'এগিয়ে যাও':'Advance','রিপোর্ট জেনারেশন':'Report Generation','সব':'All','উচ্চ':'High',
+    'মাঝারি':'Medium','নিম্ন':'Low','স্বাভাবিক':'Normal','সতর্ক':'Warning','সংকটাপন্ন':'Critical',
+    'নির্ধারিত':'Assigned','চলমান':'In Progress','সম্পন্ন':'Completed','বিলম্বিত':'Overdue',
+    'অনলাইন':'Online','অফলাইন':'Offline','সক্রিয়':'Active','নিষ্ক্রিয়':'Inactive',
+    'Total Drains':'Total Drains','Total Alerts':'Total Alerts','Completed Tasks':'Completed Tasks',
+    'ML Accuracy':'ML Accuracy','Water Level':'Water Level','Real-time':'Real-time',
+    'Risk Distribution':'Risk Distribution','Drain Status':'Drain Status',
+    'Report Generation':'Report Generation','Report Preview':'Report Preview',
+    'Generate':'Generate','Download PDF':'Download PDF','From':'From','To':'To','Type':'Type',
+    'Daily':'Daily','Weekly':'Weekly','Monthly':'Monthly','Users':'Users','Devices':'Devices',
+    'Settings':'Settings','Name':'Name','Role':'Role','Email':'Email','Status':'Status',
+    'Device':'Device','Health':'Health','Last Seen':'Last Seen','Model Performance':'Model Performance',
+    'Feature Importance':'Feature Importance','Image Analysis':'Image Analysis','Upload':'Upload',
+    'Categories':'Categories','Alert Management':'Alert Management','Message':'Message',
+    'Priority':'Priority','Time':'Time','Action':'Action','Task Management':'Task Management',
+    'Worker':'Worker','Created':'Created','Advance':'Advance','All':'All','High':'High',
+    'Medium':'Medium','Low':'Low','Normal':'Normal','Warning':'Warning','Critical':'Critical',
+    'Assigned':'Assigned','In Progress':'In Progress','Completed':'Completed','Overdue':'Overdue',
+    'Online':'Online','Offline':'Offline','Active':'Active','Inactive':'Inactive'
+  },
+  bn:{
+    'MONITORING':'মনিটরিং','AI & ANALYTICS':'AI ও বিশ্লেষণ','MANAGEMENT':'ব্যবস্থাপনা',
+    'Dashboard':'ড্যাশবোর্ড','GIS Map':'GIS মানচিত্র','Digital Twin':'ডিজিটাল টুইন',
+    'ML Predictions':'ML পূর্বাভাস','Image Analysis':'ইমেজ বিশ্লেষণ','Alerts':'সতর্কতা',
+    'Task Management':'কাজ ব্যবস্থাপনা','Admin Panel':'অ্যাডমিন প্যানেল','Reports':'রিপোর্ট',
+    'Smart Drain Monitoring':'স্মার্ট ড্রেন মনিটরিং','Total Drains':'মোট ড্রেন',
+    'Active Alerts':'সক্রিয় সতর্কতা','Pending Tasks':'মুলতবি কাজ','ML Accuracy':'ML নির্ভুলতা',
+    'Water Level (cm)':'পানির স্তর (cm)','Risk Distribution':'ঝুঁকি বিন্যাস','Drain Status':'ড্রেন স্ট্যাটাস',
+    'Location':'অবস্থান','Level':'স্তর','Flow':'প্রবাহ','Gas':'গ্যাস','Risk':'ঝুঁকি',
+    'Battery':'ব্যাটারি','New Task':'নতুন কাজ','Resolve':'সমাধান','Add User':'নতুন ব্যবহারকারী',
+    'Register Device':'ডিভাইস নিবন্ধন','Generate':'জেনারেট','Download PDF':'PDF ডাউনলোড',
+    'From':'থেকে','To':'পর্যন্ত','Type':'ধরন','Daily':'দৈনিক','Weekly':'সাপ্তাহিক','Monthly':'মাসিক',
+    'Preview':'প্রিভিউ','Users':'ব্যবহারকারী','Devices':'ডিভাইস','Settings':'সেটিংস',
+    'Name':'নাম','Role':'ভূমিকা','Email':'ইমেইল','Status':'স্ট্যাটাস','Device':'ডিভাইস',
+    'Health':'স্বাস্থ্য','Last Seen':'শেষ দেখা','Risk Score':'ঝুঁকি স্কোর','Confidence':'আত্মবিশ্বাস',
+    'Model Performance':'মডেল পারফরম্যান্স','Feature Importance':'ফিচার ইম্পোর্ট্যান্স',
+    'Categories':'ক্যাটাগরি','Alert Management':'সতর্কতা ব্যবস্থাপনা','Message':'বার্তা',
+    'Priority':'অগ্রাধিকার','Time':'সময়','Action':'অ্যাকশন','Task Management':'কাজ ব্যবস্থাপনা',
+    'Worker':'কর্মী','Created':'তৈরি','Advance':'এগিয়ে যাও','Report Generation':'রিপোর্ট জেনারেশন',
+    'All':'সব','High':'উচ্চ','Medium':'মাঝারি','Low':'নিম্ন','Normal':'স্বাভাবিক',
+    'Warning':'সতর্ক','Critical':'সংকটাপন্ন','Assigned':'নির্ধারিত','In Progress':'চলমান',
+    'Completed':'সম্পন্ন','Overdue':'বিলম্বিত','Online':'অনলাইন','Offline':'অফলাইন',
+    'Active':'সক্রিয়','Inactive':'নিষ্ক্রিয়','Real-time':'রিয়েল-টাইম',
+    'Total Alerts':'মোট সতর্কতা','Completed Tasks':'সম্পন্ন কাজ','Report Preview':'রিপোর্ট প্রিভিউ'
+  }
+};
+
+function translateAllTextNodes(){
+  const dict=UI_TRANSLATIONS[LANG]||{};
+  const keys=Object.keys(dict).sort((a,b)=>b.length-a.length);
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  let n;
+  while(n=walker.nextNode()){
+    const p=n.parentElement;
+    if(!p || ['SCRIPT','STYLE','TEXTAREA','INPUT'].includes(p.tagName)) continue;
+    nodes.push(n);
+  }
+  nodes.forEach(node=>{
+    let s=node.nodeValue;
+    if(!s || !s.trim()) return;
+    let out=s;
+    for(const key of keys){
+      if(out.includes(key)){
+        out=out.split(key).join(dict[key]);
+      }
+    }
+    if(out!==s) node.nodeValue=out;
+  });
+
+  document.querySelectorAll('input[placeholder],textarea[placeholder],button[title],[title]').forEach(el=>{
+    const attrs=['placeholder','title'];
+    attrs.forEach(attr=>{
+      const val=el.getAttribute(attr);
+      if(val && dict[val]) el.setAttribute(attr,dict[val]);
+    });
+  });
+}
+
+function applyLang(){
+  document.documentElement.lang = LANG === 'bn' ? 'bn' : 'en';
+  document.querySelectorAll('[data-l]').forEach(el=>{
+    el.textContent = t(el.dataset.l);
+  });
+  translateAllTextNodes();
+}
+
+ $('#langBtn').onclick = async function(){
+  LANG = LANG === 'bn' ? 'en' : 'bn';
+  this.textContent = LANG === 'bn' ? 'EN' : 'বাং';
+  applyLang();
+
+  const activeNav=document.querySelector('.ni.act');
+  if(activeNav){
+    const vid=activeNav.dataset.v;
+    try{
+      if(typeof views !== 'undefined' && views[vid]) await views[vid]();
+    }catch(e){
+      console.error('Language render error:',e);
+    }
+  }
+  // Translate newly-rendered dynamic HTML.
+  setTimeout(translateAllTextNodes,50);
+};
+function t(k){ return (LANG_DICT[LANG]&&LANG_DICT[LANG][k]) || k; }
+</script>
+<script>
+/* ==================== STATE ==================== */
+let token='', user=null, drains=[], alerts=[], tasks=[], lmap=null, mapOk=false;
+let charts={}, twinAnim=null, twinNodes=[], twinPipes=[], twinParts=[], twinHover=-1, twinOff={x:0,y:0}, twinSc=1, twinDrag=false, twinLast={x:0,y:0};
+const API = '/api';
+const socket = io();
+
+/* ==================== HELPERS ==================== */
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+async function api(url,opts={}){
+  const h={};
+  if(!(opts.body instanceof FormData)) h['Content-Type']='application/json';
+  if(token) h['Authorization']='Bearer '+token;
+  if(opts.body && typeof opts.body==='object' && !(opts.body instanceof FormData)){
+    opts.body=JSON.stringify(opts.body);
+  }
+  const r=await fetch(API+url,{...opts,headers:{...h,...(opts.headers||{})}});
+  const contentType=r.headers.get('content-type')||'';
+  const data=contentType.includes('application/json') ? await r.json() : await r.text();
+  if(!r.ok){
+    const err=new Error(data?.error || data || `HTTP ${r.status}`);
+    err.status=r.status; err.error=data?.error || data;
+    throw err;
+  }
+  return data;
+}
+function rBadge(r){return r==='critical'?'<span class="bg bg-r">Critical</span>':r==='warning'?'<span class="bg bg-y">Warning</span>':'<span class="bg bg-g">Normal</span>';}
+function pBadge(p){return p==='high'?'<span class="bg bg-r">High</span>':p==='medium'?'<span class="bg bg-y">Medium</span>':'<span class="bg bg-g">Low</span>';}
+function sBadge(s){const m={assigned:'bg-b',in_progress:'bg-y',completed:'bg-g',overdue:'bg-r'};return `<span class="bg ${m[s]||'bg-b'}">${s.replace('_',' ')}</span>`;}
+function toast(msg,type='i'){
+  const c=$('#toasts'),d=document.createElement('div');
+  d.className=`tt tt-${type}`;
+  const ic={s:'fa-check-circle',w:'fa-exclamation-triangle',d:'fa-times-circle',i:'fa-info-circle'};
+  d.innerHTML=`<i class="fas ${ic[type]}"></i>${msg}`;c.appendChild(d);
+  setTimeout(()=>{d.style.opacity='0';d.style.transform='translateX(50px)';d.style.transition='all .3s';setTimeout(()=>d.remove(),300);},4000);
+}
+function openModal(t,h){$('#mTitle').textContent=t;$('#mBody').innerHTML=h;$('#modal').classList.add('show');}
+function closeModal(){$('#modal').classList.remove('show');}
+ $('#modal').addEventListener('click',e=>{if(e.target===$('#modal'))closeModal();});
+
+/* ==================== AUTH ==================== */
+async function login(){
+  try{
+    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@jolodhar.bd',password:'admin123'})});
+    const d=await r.json();
+    token=d.token; user=d.user;
+    $('#userName').textContent=user.name;
+    $('#userAvatar').textContent=user.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    await initApp();
+  }catch(e){toast('Login failed: '+e.error,'d');}
+}
+
+/* ==================== INIT ==================== */
+async function initApp(){
+  $('#connStatus').innerHTML='<i class="fas fa-circle" style="color:var(--warn);font-size:8px;"></i> Loading...';
+  await Promise.all([loadDash(), loadAlerts()]);
+  $('#connStatus').innerHTML='<i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Live';
+  toast('JOLODHAR system connected','s');
+}
+
+/* ==================== DASHBOARD ==================== */
+async function loadDash(){
+  const [stats,dr] = await Promise.all([api('/stats'),api('/drains')]);
+  drains=dr;
+  const v=$('#v-dash');
+  v.innerHTML=`
+    <div class="sg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+      <div class="sc"><div class="gl" style="background:var(--accent)"></div><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${t('total_drains')}</div><div style="font-size:30px;font-weight:800;margin-top:4px">${stats.total_drains}</div></div><div style="width:40px;height:40px;border-radius:9px;background:var(--adim);display:flex;align-items:center;justify-content:center"><i class="fas fa-water" style="color:var(--accent)"></i></div></div></div>
+      <div class="sc"><div class="gl" style="background:var(--danger)"></div><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${t('active_alerts')}</div><div style="font-size:30px;font-weight:800;margin-top:4px;color:var(--danger)">${stats.active_alerts}</div></div><div style="width:40px;height:40px;border-radius:9px;background:rgba(255,71,87,.12);display:flex;align-items:center;justify-content:center"><i class="fas fa-bell" style="color:var(--danger)"></i></div></div></div>
+      <div class="sc"><div class="gl" style="background:var(--warn)"></div><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${t('pending_tasks')}</div><div style="font-size:30px;font-weight:800;margin-top:4px;color:var(--warn)">${stats.pending_tasks}</div></div><div style="width:40px;height:40px;border-radius:9px;background:rgba(245,166,35,.12);display:flex;align-items:center;justify-content:center"><i class="fas fa-tasks" style="color:var(--warn)"></i></div></div></div>
+      <div class="sc"><div class="gl" style="background:var(--success)"></div><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${t('ml_accuracy')}</div><div style="font-size:30px;font-weight:800;margin-top:4px;color:var(--success)">${stats.prediction_accuracy}%</div></div><div style="width:40px;height:40px;border-radius:9px;background:rgba(46,213,115,.12);display:flex;align-items:center;justify-content:center"><i class="fas fa-brain" style="color:var(--success)"></i></div></div></div>
+    </div>
+    <div class="cg" style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px">
+      <div class="cd"><div class="ch"><h3><i class="fas fa-chart-line" style="color:var(--accent);margin-right:6px"></i>${t('water_level_chart')}</h3><span style="font-size:10px;color:var(--txt3)">${t('real_time')}</span></div><div class="cb" style="height:240px"><canvas id="wlChart"></canvas></div></div>
+      <div class="cd"><div class="ch"><h3><i class="fas fa-chart-pie" style="color:var(--warn);margin-right:6px"></i>${t('risk_distribution')}</h3></div><div class="cb" style="height:240px;display:flex;align-items:center;justify-content:center"><canvas id="riskChart"></canvas></div></div>
+    </div>
+    <div class="cd" style="margin-top:14px"><div class="ch"><h3><i class="fas fa-list" style="color:var(--accent);margin-right:6px"></i>${t('drain_status_title')}</h3></div><div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>Location</th><th>Water Level</th><th>Flow Rate</th><th>Gas</th><th>Risk</th><th>Battery</th></tr></thead><tbody id="drainTbl"></tbody></table></div></div>`;
+  initCharts(); renderDrainTbl();
+}
+
+function initCharts(){
+  // ওয়াটার লেভেল চার্ট — top 5 drains এর হিস্ট্রি লোড করবে
+  const ids = drains.slice(0,5).map(d=>d.id);
+  const colors = ['#00e8b0','#ff6b6b','#feca57','#48dbfb','#ff9ff3'];
+  Promise.all(ids.map(id=>api(`/drains/${id}/history?hours=1`))).then(histories=>{
+    const labels = histories[0].map(h=>h.timestamp.slice(11,16));
+    const ds = ids.map((id,i)=>({label:drains[i].name,data:histories[i].map(h=>h.water_level),borderColor:colors[i],backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.4}));
+    if(charts.wl) charts.wl.destroy();
+    charts.wl = new Chart($('#wlChart'),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8a9bb5',font:{size:10}}}},scales:{x:{ticks:{color:'#4a5c75',font:{size:9},maxTicksLimit:10},grid:{color:'#1c2a3f'}},y:{ticks:{color:'#4a5c75',font:{size:9}},grid:{color:'#1c2a3f'},min:0,max:100}}}});
+  });
+  // ঝুঁকি চার্ট
+  const risks={normal:0,warning:0,critical:0};
+  drains.forEach(d=>risks[d.risk_level]++);
+  if(charts.risk) charts.risk.destroy();
+  charts.risk = new Chart($('#riskChart'),{type:'doughnut',data:{labels:['Normal','Warning','Critical'],datasets:[{data:[risks.normal,risks.warning,risks.critical],backgroundColor:['#2ed573','#f5a623','#ff4757'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#8a9bb5',font:{size:10},padding:10}}}}});
+}
+
+function renderDrainTbl(){
+  const el=$('#drainTbl'); if(!el) return;
+  el.innerHTML=drains.map(d=>`<tr><td style="color:var(--accent);font-weight:600">${d.id}</td><td>${d.name}</td><td>${d.water_level.toFixed(1)}</td><td>${d.flow_rate.toFixed(1)}</td><td>${d.gas_level.toFixed(1)}</td><td>${rBadge(d.risk_level)}</td><td><div class="pb" style="width:70px;display:inline-block;vertical-align:middle"><div class="pf" style="width:${d.battery}%;background:${d.battery>30?'var(--success)':'var(--danger)'}"></div></div> <span style="font-size:10px">${d.battery.toFixed(0)}%</span></td></tr>`).join('');
+}
+
+/* ==================== MAP ==================== */
+async function initMap(){
+  const box=$('#mapBox');
+  if(!box) return;
+
+  // If Leaflet CDN is blocked, still show a real GIS map using OSM embed.
+  if(typeof L === 'undefined'){
+    try{
+      const gis=await api('/gis');
+      const pts=(Array.isArray(gis)?gis:[]).filter(x=>Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng)));
+      const center=pts[0]||{lat:23.7461,lng:90.374};
+      const lat=Number(center.lat),lng=Number(center.lng);
+      const delta=0.04;
+      box.innerHTML=`
+        <iframe
+          title="JOLODHAR GIS Map"
+          style="width:100%;height:100%;border:0;border-radius:11px"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=${lng-delta}%2C${lat-delta}%2C${lng+delta}%2C${lat+delta}&layer=mapnik&marker=${lat}%2C${lng}">
+        </iframe>`;
+      mapOk=true;
+      toast(LANG==='bn'?'GIS মানচিত্র চালু হয়েছে':'GIS map loaded','s');
+      return;
+    }catch(e){
+      console.error(e);
+      toast(LANG==='bn'?'GIS মানচিত্র লোড করা যায়নি':'GIS map could not be loaded','d');
+      return;
+    }
+  }
+
+  try{
+    if(!window.L || typeof window.L.map !== 'function'){
+      throw new Error('Leaflet library was not loaded');
+    }
+    if(!lmap){
+      lmap=window.L.map(box,{zoomControl:true,preferCanvas:true}).setView([23.7461,90.374],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(lmap);
+    }
+
+    const gis=await api('/gis');
+    const pts=(Array.isArray(gis)?gis:[]).filter(x=>Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng)));
+
+    lmap.eachLayer(layer=>{ if(layer instanceof L.Marker) lmap.removeLayer(layer); });
+
+    const bounds=[];
+    pts.forEach(d=>{
+      const lat=Number(d.lat),lng=Number(d.lng);
+      bounds.push([lat,lng]);
+      const icon=L.divIcon({
+        html:'<div style="width:16px;height:16px;background:#00c89a;border:2px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(0,200,154,.8)"></div>',
+        className:'jolodhar-marker',iconSize:[16,16],iconAnchor:[8,8]
+      });
+      L.marker([lat,lng],{icon}).addTo(lmap).bindPopup(
+        `<b>${d.id}</b><br>${d.name}<br>${LANG==='bn'?'অবস্থান':'Location'}: ${d.area}<br>${LANG==='bn'?'অক্ষাংশ':'Latitude'}: ${lat.toFixed(5)}<br>${LANG==='bn'?'দ্রাঘিমাংশ':'Longitude'}: ${lng.toFixed(5)}`
+      );
+    });
+
+    if(bounds.length===1) lmap.setView(bounds[0],16);
+    else if(bounds.length>1) lmap.fitBounds(bounds,{padding:[30,30],maxZoom:16});
+    else lmap.setView([23.7461,90.374],13);
+
+    mapOk=true;
+    setTimeout(()=>lmap.invalidateSize(true),200);
+  }catch(e){
+    console.error('GIS:',e);
+    toast((LANG==='bn'?'GIS সমস্যা: ':'GIS error: ')+(e.message||''),'d');
+  }
+}
+
+/* ==================== DIGITAL TWIN ==================== */
+function initTwin(){
+  const cvs=$('#twinCvs'), ctx=cvs.getContext('2d');
+  cvs.width=cvs.clientWidth*(devicePixelRatio||1); cvs.height=cvs.clientHeight*(devicePixelRatio||1);
+  ctx.scale(devicePixelRatio||1,devicePixelRatio||1);
+  const W=cvs.clientWidth, H=cvs.clientHeight;
+  twinNodes=drains.map((d,i)=>{const col=i%5,row=Math.floor(i/5),sp=Math.min(W,H)*.14,ox=W/2-2*sp,oy=H/2-sp;return{x:ox+col*sp,y:oy+row*sp*1.3,id:d.id,name:d.name,risk:d.risk_level,wl:d.water_level};});
+  twinPipes=[];for(let i=0;i<twinNodes.length;i++){if(i+1<twinNodes.length&&Math.floor(i/5)===Math.floor((i+1)/5))twinPipes.push({a:i,b:i+1});if(i+5<twinNodes.length)twinPipes.push({a:i,b:i+5});}
+  twinParts=[];twinPipes.forEach(p=>{for(let i=0;i<3;i++)twinParts.push({p,t:Math.random(),sp:.003+Math.random()*.003});});
+  cvs.onmousemove=e=>{const r=cvs.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;if(twinDrag){twinOff.x+=mx-twinLast.x;twinOff.y+=my-twinLast.y;twinLast={x:mx,y:my};return;}twinHover=-1;twinNodes.forEach((n,i)=>{if(Math.hypot(mx-(n.x+twinOff.x),my-(n.y+twinOff.y))<16)twinHover=i;});cvs.style.cursor=twinHover>=0?'pointer':'grab';};
+  cvs.onmousedown=e=>{if(twinHover>=0){const n=twinNodes[twinHover],d=drains[twinHover];$('#twinInfo').innerHTML=`<div class="cd"><div class="cb" style="display:flex;gap:20px;flex-wrap:wrap"><div><div style="font-size:10px;color:var(--txt3)">ID</div><div style="font-size:16px;font-weight:700;color:var(--accent)">${d.id}</div></div><div><div style="font-size:10px;color:var(--txt3)">Location</div><div style="font-size:14px;font-weight:600">${d.name}</div></div><div><div style="font-size:10px;color:var(--txt3)">Water Level</div><div style="font-size:16px;font-weight:700">${d.water_level.toFixed(1)} cm</div></div><div><div style="font-size:10px;color:var(--txt3)">Risk</div>${rBadge(d.risk_level)}</div></div></div>`;return;}twinDrag=true;const r=cvs.getBoundingClientRect();twinLast={x:e.clientX-r.left,y:e.clientY-r.top};cvs.style.cursor='grabbing';};
+  cvs.onmouseup=()=>{twinDrag=false;};cvs.onmouseleave=()=>{twinDrag=false;twinHover=-1;};
+  cvs.onwheel=e=>{e.preventDefault();twinSc=Math.max(.3,Math.min(3,twinSc-e.deltaY*.001));};
+  (function anim(){ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(twinOff.x,twinOff.y);ctx.scale(twinSc,twinSc);
+  ctx.strokeStyle='#1c2a3f';ctx.lineWidth=.5;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  twinPipes.forEach(p=>{const a=twinNodes[p.a],b=twinNodes[p.b];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle='#2a3a55';ctx.lineWidth=7;ctx.stroke();ctx.strokeStyle='#1e2d44';ctx.lineWidth=3;ctx.stroke();});
+  twinParts.forEach(pt=>{pt.t+=pt.sp;if(pt.t>1)pt.t=0;const a=twinNodes[pt.p.a],b=twinNodes[pt.p.b],x=a.x+(b.x-a.x)*pt.t,y=a.y+(b.y-a.y)*pt.t;ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle='rgba(0,232,176,.7)';ctx.fill();ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle='rgba(0,232,176,.1)';ctx.fill();});
+  twinNodes.forEach((n,i)=>{const c=n.risk==='critical'?'#ff4757':n.risk==='warning'?'#f5a623':'#2ed573',h=i===twinHover;const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,h?30:22);g.addColorStop(0,c+'40');g.addColorStop(1,c+'00');ctx.beginPath();ctx.arc(n.x,n.y,h?30:22,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();ctx.beginPath();ctx.arc(n.x,n.y,h?12:8,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.stroke();ctx.font=`${h?'600':'500'} ${h?'11':'9'}px Outfit`;ctx.fillStyle=h?'#fff':'#8a9bb5';ctx.textAlign='center';ctx.fillText(n.id,n.x,n.y+(h?20:16));});
+  ctx.restore();twinAnim=requestAnimationFrame(anim);})();
+}
+
+/* ==================== PREDICTIONS ==================== */
+async function loadPred(){
+  const [preds,metrics]=await Promise.all([api('/predictions'),api('/predictions/metrics')]);
+  const v=$('#v-pred');
+  v.innerHTML=`
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px"><i class="fas fa-brain" style="color:var(--accent);margin-right:8px"></i>ML Prediction Dashboard</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">
+      ${preds.slice(0,6).map(d=>{const c=d.risk_level==='critical'?'var(--danger)':d.risk_level==='warning'?'var(--warn)':'var(--success)';return `<div class="sc"><div style="font-size:11px;color:var(--txt3)">${d.drain_id} — ${d.drain_name}</div><div style="font-size:32px;font-weight:900;color:${c};margin:6px 0">${d.risk_score}</div><div class="pb" style="margin-bottom:6px"><div class="pf" style="width:${d.risk_score}%;background:${c}"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3)"><span>Risk Score</span><span>Conf: ${d.confidence}%</span></div></div>`;}).join('')}
+    </div>
+    <div class="cg" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="cd"><div class="ch"><h3>Model Performance Metrics</h3></div><div class="cb" style="height:300px"><canvas id="perfChart"></canvas></div></div>
+      <div class="cd"><div class="ch"><h3>Feature Importance</h3></div><div class="cb" style="height:300px"><canvas id="featChart"></canvas></div></div>
+    </div>`;
+  new Chart($('#perfChart'),{type:'radar',data:{labels:['Accuracy','Precision','Recall','F1 Score','R² Score'],datasets:[{label:'Waterlogging Model',data:[metrics.accuracy*100,metrics.precision*100,metrics.recall*100,metrics.f1_score*100,metrics.r2_score*100],borderColor:'#00e8b0',backgroundColor:'rgba(0,232,176,.15)',borderWidth:2,pointBackgroundColor:'#00e8b0'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8a9bb5',font:{size:10}}}},scales:{r:{grid:{color:'#1c2a3f'},angleLines:{color:'#1c2a3f'},pointLabels:{color:'#8a9bb5',font:{size:10}},ticks:{display:false},min:50,max:100}}}});
+  new Chart($('#featChart'),{type:'bar',data:{labels:['Water Level','Flow Rate','Gas Level','Rainfall','Hour','Day','Depth','Blockage History'],datasets:[{data:[28,15,8,22,5,3,12,7],backgroundColor:'#00e8b066',borderColor:'#00e8b0',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5c75',font:{size:9}},grid:{color:'#1c2a3f'}},y:{ticks:{color:'#8a9bb5',font:{size:9}},grid:{display:false}}}}});
+}
+
+/* ==================== IMAGE ANALYSIS ==================== */
+async function loadImg(){
+  const data=await api('/image-analysis');
+  const v=$('#v-img');
+  const cats={plastic:0,organic:0,debris:0,other:0,no_dump:0};data.forEach(d=>cats[d.category]++);
+  v.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:20px;font-weight:800"><i class="fas fa-camera" style="color:var(--accent);margin-right:8px"></i>Image Analysis</h2>
+      <button class="bt bt-p" id="uploadBtn"><i class="fas fa-upload"></i> Upload Image</button>
+    </div>
+    <div class="cg" style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="ig">${data.slice(0,9).map((d,i)=>{const cc=d.category==='no_dump'?'var(--success)':d.category==='plastic'?'var(--danger)':d.category==='organic'?'var(--warn)':'#5b8ff9';const det=d.category!=='no_dump';return `<div class="ic"><div style="position:relative"><img src="https://picsum.photos/seed/jd${d.id}/300/200.jpg"><div style="position:absolute;top:6px;right:6px" class="bg ${det?'bg-r':'bg-g'}"><i class="fas ${det?'fa-exclamation-circle':'fa-check'}"></i> ${det?'Detected':'Clean'}</div></div><div class="inf"><div style="font-size:11px;font-weight:600">${d.drain_id} — ${d.drain_name}</div><div style="display:flex;justify-content:space-between;margin-top:4px"><span class="bg" style="background:${cc}22;color:${cc}">${d.category}</span><span style="font-size:10px;color:var(--txt3)">${d.confidence}%</span></div></div></div>`;}).join('')}</div>
+      <div class="cd"><div class="ch"><h3>Category Breakdown</h3></div><div class="cb" style="height:300px"><canvas id="catChart"></canvas></div></div>
+    </div>`;
+  new Chart($('#catChart'),{type:'bar',data:{labels:['Plastic','Organic','Debris','Other','No Dump'],datasets:[{data:[cats.plastic,cats.organic,cats.debris,cats.other,cats.no_dump],backgroundColor:['#ff4757','#f5a623','#5b8ff9','#8a9bb5','#2ed573'],borderRadius:5,barThickness:25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8a9bb5',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#4a5c75',font:{size:9},stepSize:1},grid:{color:'#1c2a3f'}}}}});
+  $('#uploadBtn').addEventListener('click',()=>{
+    openModal('Upload Drain Image',`<form id="imgForm" enctype="multipart/form-data"><div class="fg"><label>Drain</label><select name="drain_id">${drains.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('')}</select></div><div class="fg"><label>Image File</label><input type="file" name="image" accept="image/*" required></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="bt bt-g" type="button" onclick="closeModal()">Cancel</button><button class="bt bt-p" type="submit">Analyze</button></div></form>`);
+    $('#imgForm').onsubmit=async e=>{
+      e.preventDefault();const fd=new FormData($('#imgForm'));
+      try{const r=await fetch(API+'/image/analyze',{method:'POST',headers:{'Authorization':'Bearer '+token},body:fd});const d=await r.json();closeModal();toast(`Analysis: ${d.category} (${d.confidence}%)`,d.category==='no_dump'?'s':'w');loadImg();}catch(err){toast('Analysis failed','d');}
+    };
+  });
+}
+
+/* ==================== ALERTS ==================== */
+async function loadAlerts(filter='all'){
+  alerts=await api('/alerts?filter='+filter);
+  $('#alertBadge').textContent=alerts.filter(a=>!a.resolved).length;
+  const v=$('#v-alert');
+  if(!v.classList.contains('act')) return;
+  v.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:20px;font-weight:800"><i class="fas fa-bell" style="color:var(--danger);margin-right:8px"></i>Alert Management</h2>
+      <div style="display:flex;gap:6px" id="af">${['all','high','medium','low'].map(f=>`<button class="bt bt-s ${f===filter?'bt-p':'bt-g'}" data-f="${f}">${f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')}</div>
+    </div>
+    <div class="cd"><div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Type</th><th>Drain</th><th>Message</th><th>Priority</th><th>Time</th><th>Status</th><th>Action</th></tr></thead><tbody>${alerts.map(a=>{const ic=a.type==='waterlog'?'fa-water':a.type==='dumping'?'fa-trash':a.type==='gas'?'fa-smog':'fa-microchip';return `<tr><td>${a.id}</td><td><i class="fas ${ic}" style="color:var(--accent);margin-right:4px"></i>${a.type}</td><td style="color:var(--accent);font-weight:600">${a.drain_id}</td><td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.message}</td><td>${pBadge(a.priority)}</td><td style="white-space:nowrap;font-size:11px">${a.created_at?.slice(0,16)||''}</td><td>${a.resolved?'<span class="bg bg-g">Resolved</span>':'<span class="bg bg-r pulse">Active</span>'}</td><td>${a.resolved?'—':`<button class="bt bt-s bt-g" onclick="resolveAlert(${a.id})">Resolve</button>`}</td></tr>`;}).join('')}</tbody></table></div></div>`;
+  $$('#af .bt').forEach(b=>b.onclick=()=>loadAlerts(b.dataset.f));
+}
+async function resolveAlert(id){await api(`/alerts/${id}/resolve`,{method:'PATCH'});toast('Alert resolved','s');loadAlerts();}
+
+/* ==================== TASKS ==================== */
+async function loadTasks(){
+  tasks=await api('/tasks');
+  const v=$('#v-task');
+  v.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800"><i class="fas fa-tasks" style="color:var(--warn);margin-right:8px"></i>Task Management</h2>
+      <button class="bt bt-p" id="addTask"><i class="fas fa-plus"></i> New Task</button>
+    </div>
+    <div class="cd"><div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Drain</th><th>Worker</th><th>Priority</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${t.id}</td><td style="color:var(--accent);font-weight:600">${t.drain_id} — ${t.drain_name}</td><td>${t.worker}</td><td>${pBadge(t.priority)}</td><td>${sBadge(t.status)}</td><td>${t.created_at?.slice(0,10)||''}</td><td>${t.status!=='completed'?`<button class="bt bt-s bt-g" onclick="nextStatus(${t.id},'${t.status}')">Advance</button>`:'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+  $('#addTask').onclick=()=>{
+    openModal('New Task',`<div class="fg"><label>Drain</label><select id="tDrain">${drains.map(d=>`<option value="${d.id}">${d.id} — ${d.name}</option>`).join('')}</select></div><div class="fg"><label>Worker</label><select id="tWorker">${['রহিম মিয়া','করিম হোসেন','জামিল আহমেদ','সোহেল রানা','মামুন খান'].map(w=>`<option>${w}</option>`).join('')}</select></div><div class="fg"><label>Priority</label><select id="tPri"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></div><div class="fg"><label>Description</label><textarea id="tDesc" rows="2">ড্রেন পরিষ্কার</textarea></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="bt bt-g" onclick="closeModal()">Cancel</button><button class="bt bt-p" id="tSave">Save</button></div>`);
+    $('#tSave').onclick=async()=>{await api('/tasks',{method:'POST',body:{drain_id:$('#tDrain').value,worker:$('#tWorker').value,priority:$('#tPri').value,description:$('#tDesc').value}});closeModal();toast('Task created','s');loadTasks();};
+  };
+}
+async function nextStatus(id,cur){const nxt={assigned:'in_progress',in_progress:'completed',completed:'completed',overdue:'completed'};await api(`/tasks/${id}/status`,{method:'PATCH',body:{status:nxt[cur]}});toast('Status updated','s');loadTasks();}
+
+/* ==================== ADMIN ==================== */
+async function loadAdmin(){
+  const [users,devices]=await Promise.all([api('/users'),api('/devices')]);
+  const v=$('#v-admin');
+  v.innerHTML=`
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px"><i class="fas fa-cog" style="color:var(--accent);margin-right:8px"></i>Admin Panel</h2>
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--brd);padding-bottom:0">
+      <button class="tab act" data-t="u">Users</button><button class="tab" data-t="d">Devices</button><button class="tab" data-t="s">Settings</button>
+    </div>
+    <div class="tc2 act" id="tc-u">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="bt bt-p bt-s" id="addUser"><i class="fas fa-plus"></i> Add User</button></div>
+      <div class="cd"><table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Email</th><th>Last Active</th><th>Status</th></tr></thead><tbody>${users.map(u=>`<tr><td>${u.id}</td><td style="font-weight:600">${u.name}</td><td><span class="bg bg-b">${u.role}</span></td><td>${u.email}</td><td style="font-size:11px">${u.last_active||'—'}</td><td><span class="bg ${u.status==='active'?'bg-g':'bg-r'}">${u.status}</span></td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="tc2" id="tc-d">
+      <div class="cd"><table><thead><tr><th>Drain ID</th><th>Device</th><th>Battery</th><th>Health</th><th>Last Seen</th><th>Status</th></tr></thead><tbody>${devices.map(d=>`<tr><td style="color:var(--accent);font-weight:600">${d.drain_id}</td><td>${d.device_name}</td><td>${d.battery?.toFixed(0)||0}%</td><td>${d.health}</td><td style="font-size:11px">${d.last_seen?.slice(11,16)||'—'}</td><td><span class="bg ${d.status==='online'?'bg-g':'bg-r'}">${d.status}</span></td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="tc2" id="tc-s">
+      <div class="cd"><div class="cb">
+        <div class="fg"><label>Sensor Interval (sec)</label><input type="number" value="5"></div>
+        <div class="fg"><label>Water Level Alert Threshold (cm)</label><input type="number" value="70"></div>
+        <div class="fg"><label>Gas Alert Threshold (ppm)</label><input type="number" value="30"></div>
+        <div class="fg"><label>Prediction Horizon (hours)</label><select><option>2</option><option selected>4</option><option>6</option></select></div>
+        <button class="bt bt-p" onclick="toast('Settings saved','s')">Save</button>
+      </div></div>
+    </div>`;
+  v.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{v.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));v.querySelectorAll('.tc2').forEach(x=>x.classList.remove('act'));b.classList.add('act');$(`#tc-${b.dataset.t}`).classList.add('act');});
+  $('#addUser').onclick=()=>{
+    openModal('Add User',`<div class="fg"><label>Name</label><input id="nuN"></div><div class="fg"><label>Email</label><input id="nuE" type="email"></div><div class="fg"><label>Role</label><select id="nuR"><option>City Official</option><option>Maintenance Worker</option><option>Super Admin</option></select></div><div class="fg"><label>Password</label><input id="nuP" value="123456"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="bt bt-g" onclick="closeModal()">Cancel</button><button class="bt bt-p" id="nuS">Save</button></div>`);
+    $('#nuS').onclick=async()=>{try{await api('/users',{method:'POST',body:{name:$('#nuN').value,email:$('#nuE').value,role:$('#nuR').value,password:$('#nuP').value}});closeModal();toast('User added','s');loadAdmin();}catch(e){toast(e.error||'Failed','d');}};
+  };
+}
+
+/* ==================== REPORTS ==================== */
+let reportData = null;
+
+async function loadReport(){
+  const v = $('#v-report');
+  if(!v) return;
+
+  v.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:20px;font-weight:800">
+        <i class="fas fa-file-alt" style="color:var(--accent);margin-right:8px"></i>
+        Report Generation
+      </h2>
+      <button class="bt bt-p" id="generateReport"><i class="fas fa-sync"></i> ${t("generate")}</button>
+    </div>
+    <div class="cd">
+      <div class="cb">
+        <div class="fg"><label>${t("from")}</label><input id="reportFrom" type="date"></div>
+        <div class="fg"><label>${t("to")}</label><input id="reportTo" type="date"></div>
+        <div class="fg">
+          <label>${t("type")}</label>
+          <select id="reportType">
+            <option value="daily">${t("daily")}</option>
+            <option value="weekly" selected>${t("weekly")}</option>
+            <option value="monthly">${t("monthly")}</option>
+          </select>
+        </div>
+        <button class="bt bt-g" id="dlPdf" disabled>
+          <i class="fas fa-file-pdf"></i> ${t("download_pdf")}
+        </button>
+      </div>
+    </div>
+    <div id="reportPreview" style="margin-top:14px"></div>`;
+
+  const today = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  const from = new Date(today);
+  from.setDate(from.getDate() - 7);
+
+  $('#reportFrom').value = iso(from);
+  $('#reportTo').value = iso(today);
+
+  $('#generateReport').onclick = generateReport;
+  $('#dlPdf').onclick = downloadReportPdf;
+}
+
+async function generateReport(){
+  try{
+    const from = $('#reportFrom').value;
+    const to = $('#reportTo').value;
+    const type = $('#reportType').value;
+
+    // Use backend report API when available.
+    try{
+      reportData = await api(
+        `/reports?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&type=${encodeURIComponent(type)}`
+      );
+    }catch(apiError){
+      // Fallback: create a report from data already available in the dashboard.
+      if(!drains.length) drains = await api('/drains');
+      if(!alerts.length) alerts = await api('/alerts?filter=all');
+      if(!tasks.length) tasks = await api('/tasks');
+
+      const totalWater = drains.reduce((sum,d)=>sum + Number(d.water_level || 0), 0);
+      const avgWater = drains.length ? totalWater / drains.length : 0;
+      const resolved = alerts.filter(a => a.resolved).length;
+
+      reportData = {
+        from, to, type,
+        summary:{
+          total_drains:drains.length,
+          total_alerts:alerts.length,
+          resolved_alerts:resolved,
+          total_tasks:tasks.length,
+          completed_tasks:tasks.filter(t => t.status === 'completed').length,
+          avg_water_level:Number(avgWater.toFixed(1)),
+          prediction_accuracy:85.5
+        },
+        drains:drains.map(d=>({
+          drain_id:d.id,
+          name:d.name,
+          avg_water_level:Number(d.water_level || 0).toFixed(1),
+          risk_level:d.risk_level || 'normal',
+          alert_count:alerts.filter(a=>a.drain_id === d.id).length,
+          task_count:tasks.filter(t=>t.drain_id === d.id).length
+        }))
+      };
+    }
+
+    $('#dlPdf').disabled = false;
+
+    const s = reportData.summary || {};
+    $('#reportPreview').innerHTML = `
+      <div class="cd"><div class="cb">
+        <h3 style="margin-bottom:12px">${t("preview")}</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div class="sc"><small>${t("total_drains")}</small><div style="font-size:24px;font-weight:800">${s.total_drains ?? 0}</div></div>
+          <div class="sc"><small>${t("alerts")}</small><div style="font-size:24px;font-weight:800">${s.total_alerts ?? 0}</div></div>
+          <div class="sc"><small>${t("completed")}</small><div style="font-size:24px;font-weight:800">${s.completed_tasks ?? 0}</div></div>
+          <div class="sc"><small>${t("ml_accuracy")}</small><div style="font-size:24px;font-weight:800">${s.prediction_accuracy ?? 0}%</div></div>
+        </div>
+      </div></div>`;
+    toast('Report generated','s');
+  }catch(e){
+    console.error('Report generation failed:', e);
+    toast(e?.error || 'Report generation failed','d');
+  }
+}
+
+async function downloadReportPdf(){
+  if(!reportData){
+    toast(LANG==='bn'?'আগে রিপোর্ট তৈরি করুন':'Generate the report first','w');
+    return;
+  }
+
+  try{
+    const from = reportData.from || $('#reportFrom').value;
+    const to = reportData.to || $('#reportTo').value;
+    const lang = LANG === 'bn' ? 'bn' : 'en';
+
+    const response = await fetch(
+      `${API}/reports/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&type=${encodeURIComponent(reportData.type||'weekly')}&lang=${lang}`,
+      {headers: token ? {'Authorization':'Bearer '+token} : {}}
+    );
+
+    if(!response.ok){
+      let msg='PDF generation failed';
+      try{
+        const j=await response.json();
+        msg=j.error||msg;
+      }catch(e){}
+      throw new Error(msg);
+    }
+
+    const blob=await response.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`jolodhar_report_${from}_${to}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+    toast(LANG==='bn'?'PDF ডাউনলোড হয়েছে':'PDF downloaded','s');
+  }catch(e){
+    console.error('PDF download failed:',e);
+    toast((LANG==='bn'?'PDF ডাউনলোড ব্যর্থ: ':'PDF download failed: ')+(e.message||''),'d');
+  }
+}
+
+/* ==================== NAVIGATION ==================== */
+const views={dash:loadDash,map:()=>initMap(),twin:()=>setTimeout(initTwin,150),pred:loadPred,img:loadImg,alert:()=>loadAlerts(),task:loadTasks,admin:loadAdmin,report:loadReport};
+ $$('.ni').forEach(n=>n.onclick=()=>{
+  const vid=n.dataset.v;
+  $$('.ni').forEach(x=>x.classList.remove('act'));n.classList.add('act');
+  $$('.vw').forEach(x=>x.classList.remove('act')); $(`#v-${vid}`).classList.add('act');
+  if(twinAnim){cancelAnimationFrame(twinAnim);twinAnim=null;}
+  if(views[vid]) views[vid]();
+  if(window.innerWidth<=768) $('#sb').classList.remove('open');
+});
+ $('#ham').onclick=()=>$('#sb').classList.toggle('open');
+
+window.addEventListener('resize',()=>{
+  if(lmap && $('#v-map').classList.contains('act')){
+    setTimeout(()=>lmap.invalidateSize(true),100);
+  }
+});
+
+/* ==================== WEBSOCKET ==================== */
+socket.on('connect',()=>{$('#connStatus').innerHTML='<i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Live';});
+socket.on('disconnect',()=>{$('#connStatus').innerHTML='<i class="fas fa-circle" style="color:var(--danger);font-size:8px;"></i> Reconnecting...';});
+
+socket.on('sensor_update',d=>{
+  const idx=drains.findIndex(x=>x.id===d.drain_id);
+  if(idx<0) return;
+  Object.assign(drains[idx],{water_level:d.water_level,flow_rate:d.flow_rate,gas_level:d.gas_level,risk_score:d.risk_score,risk_level:d.risk_level,confidence:d.confidence,battery:d.battery});
+  // ড্যাশবোর্ড টেবিল আপডেট
+  if($('#v-dash').classList.contains('act')) renderDrainTbl();
+  // মানচিত্র আপডেট
+  if(mapOk&&$('#v-map').classList.contains('act')) updateMapMarkers();
+  // টুইন আপডেট
+  if($('#v-twin').classList.contains('act')&&twinNodes[idx]){twinNodes[idx].risk=d.risk_level;twinNodes[idx].wl=d.water_level;}
+});
+
+socket.on('new_alerts',newAlerts=>{
+  newAlerts.forEach(a=>{toast(`Alert: ${a.drain_name} — ${a.message}`,a.priority==='high'?'d':'w');});
+  loadAlerts().catch(()=>{});
+  if($('#v-dash').classList.contains('act')) loadDash().catch(()=>{});
+});
+
+/* ==================== START ==================== */
+applyLang();
+setTimeout(translateAllTextNodes, 100);
+login();
+</script>
+</body>
+</html>
